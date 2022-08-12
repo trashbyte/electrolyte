@@ -7,6 +7,7 @@ use crate::traits::IonDeserialize;
 macro_rules! type_fns {
     ($ion_ty:ident, $pat:pat => $res:expr; $ret:ty) => {
         paste! {
+            #[doc = "Attempt to read the current value as a " $ion_ty]
             pub fn [< as_ $ion_ty:lower >](&self) -> IonResult<$ret> {
                 match &self.data {
                     IonValue::$ion_ty$pat => $res,
@@ -14,6 +15,7 @@ macro_rules! type_fns {
                 }
             }
 
+            #[doc = "Attempt to read the named field as a " $ion_ty ". Assumes current value is an `IonStruct`."]
             pub fn [< get_ $ion_ty:lower >](&self, field_name: impl AsRef<str>) -> IonResult<$ret> {
                 match self.as_struct()?.field(field_name.as_ref()) {
                     Some(val) => {
@@ -81,10 +83,12 @@ impl<'d> IonWalker<'d> {
         T::deserialize(&mut IonWalker::with_scopes(data, scopes.clone()))
     }
 
+    /// Returns the list of annotations for the current value.
     pub fn annotations(&self) -> &Annotations {
         self.data.annotations()
     }
 
+    /// Returns true if the current value has an annotation with the given value.
     pub fn has_annotation(&self, ann: impl AsRef<str>) -> bool {
         self.data.annotations().iter().find(|a| a.as_str() == ann.as_ref()).is_some()
     }
@@ -99,10 +103,12 @@ impl<'d> IonWalker<'d> {
     type_fns!(Blob,     (b,_) => Ok(&b[..]);    &[u8]);
     type_fns!(Timestamp,(t,_) => Ok(t);         &DateTime<FixedOffset>);
 
+    /// Generic version of the as_X method that works for any type which is `IonDeserialize`.
     pub fn as_type<T: IonDeserialize>(&self) -> IonResult<T> {
         T::deserialize(&self)
     }
 
+    /// Generic version of the get_X method that works for any type which is `IonDeserialize`.
     pub fn get_type<T: IonDeserialize>(&self, field_name: impl AsRef<str>) -> IonResult<T> {
         match self.as_struct()?.field(field_name.as_ref()) {
             Some(field) => {

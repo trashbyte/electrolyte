@@ -1,8 +1,8 @@
 use chrono::{DateTime, FixedOffset};
 use crate::error::{IonError, IonErrorType, IonResult};
 use crate::types::{IonStruct, IonType, IonValue, IonList, Annotations};
-use paste::paste;
 use crate::traits::IonDeserialize;
+use paste::paste;
 
 macro_rules! type_fns {
     ($ion_ty:ident, $pat:pat => $res:expr; $ret:ty) => {
@@ -122,5 +122,13 @@ impl<'d> IonWalker<'d> {
                 self.clone_scopes_with(field_name)
             ))
         }
+    }
+
+    pub fn as_typed_list<T: IonDeserialize>(&self) -> IonResult<Vec<T>> {
+        let mut result = Vec::new();
+        for item in self.as_list()?.items.iter() {
+            result.push(IonWalker::deserialize(item)?)
+        }
+        Ok(result)
     }
 }

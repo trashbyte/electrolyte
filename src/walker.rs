@@ -124,6 +124,23 @@ impl<'d> IonWalker<'d> {
         }
     }
 
+    /// Attempt to move into the named field without assuming its type.
+    /// Assumes current value is an `IonStruct`.
+    pub fn enter(&self, field_name: impl AsRef<str>) -> IonResult<IonWalker> {
+        match self.as_struct()?.field(field_name.as_ref()) {
+            Some(val) => {
+                Ok(IonWalker {
+                    data: val,
+                    scopes: self.scopes.clone()
+                })
+            }
+            None => Err(IonError::new(
+                IonErrorType::MissingField(field_name.as_ref().to_string()),
+                self.clone_scopes_with(field_name)
+            ))
+        }
+    }
+
     pub fn as_typed_list<T: IonDeserialize>(&self) -> IonResult<Vec<T>> {
         let mut result = Vec::new();
         for item in self.as_list()?.items.iter() {

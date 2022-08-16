@@ -5,7 +5,7 @@ use crate::traits::IonDeserialize;
 use paste::paste;
 
 macro_rules! type_fns {
-    ($ion_ty:ident, $pat:pat => $res:expr; $ret:ty) => {
+    ($ion_ty:ident, $pat:tt => $res:expr; $ret:ty) => {
         paste! {
             #[doc = "Attempt to read the current value as a " $ion_ty]
             pub fn [< as_ $ion_ty:lower >](&self) -> IonResult<$ret> {

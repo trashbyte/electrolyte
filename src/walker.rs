@@ -98,10 +98,40 @@ impl<'d> IonWalker<'d> {
     type_fns!(Null,     (_)   => Ok(());        ());
     type_fns!(Boolean,  (b,_) => Ok(*b);        bool);
     type_fns!(Integer,  (i,_) => Ok(*i);        i64);
-    type_fns!(Float,    (f,_) => Ok(*f);        f64);
     type_fns!(String,   (s,_) => Ok(s);         &str);
     type_fns!(Blob,     (b,_) => Ok(&b[..]);    &[u8]);
     type_fns!(Timestamp,(t,_) => Ok(t);         &DateTime<FixedOffset>);
+
+    /// Attempt to read the current value as a float
+    // Special case for float accepting integers
+    pub fn as_float(&self) -> IonResult<f64> {
+        match &self.data {
+            IonValue::Float(f, _) => Ok(*f),
+            IonValue::Integer(i, _) => Ok(*i as f64),
+            _ => Err(IonError::new(IonErrorType::WrongType { found: self.data.ty(), expected: IonType::Float }, self.clone_scopes()))
+        }
+    }
+
+    /// Attempt to read the named field as a float. Assumes current value is an `IonStruct`.
+    // Special case for float accepting integers
+    pub fn get_float(&self, field_name: impl AsRef<str>) -> IonResult<f64> {
+        match self.as_struct()?.field(field_name.as_ref()) {
+            Some(val) => {
+                match val {
+                    IonValue::Float(f, _) => Ok(*f),
+                    IonValue::Integer(i, _) => Ok(*i as f64),
+                    _ => Err(IonError::new(
+                        IonErrorType::WrongType { found: val.ty(), expected: IonType::Float },
+                        self.clone_scopes_with(field_name)
+                    )),
+                }
+            },
+            None => Err(IonError::new(
+                IonErrorType::MissingField(field_name.as_ref().to_string()),
+                self.clone_scopes_with(field_name)
+            ))
+        }
+    }
 
     /// Generic version of the as_X method that works for any type which is `IonDeserialize`.
     pub fn as_type<T: IonDeserialize>(&self) -> IonResult<T> {
